@@ -20,11 +20,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+    - name: Install devbox
+      uses: jetify-com/devbox-install-action@v0.14.0
+
     - name: Clean
-      run: cargo clean
+      run: devbox clean
 
     - name: Build
-      run: cargo build --verbose
+      run: devbox build
       
   test:
     runs-on: ubuntu-24.04
@@ -35,6 +38,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+    - name: Install devbox
+      uses: jetify-com/devbox-install-action@v0.14.0
+
     - name: Test
-      run: cargo test --verbose
+      run: devbox run test
 

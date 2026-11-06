@@ -11,7 +11,13 @@
     ],
     "scripts": {
       "test": [
-        "echo \"Error: no test specified\" && exit 1"
+        "cargo test --verbose"
+      ],
+      "clean" : [
+        "cargo clean"
+      ],
+      "build" : [
+        "cargo build --verbose"
       ]
     }
   }
