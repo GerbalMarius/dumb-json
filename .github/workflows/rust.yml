@@ -1,0 +1,28 @@
+name: Rust CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Clean
+      run: cargo clean
+    - name: Build
+      run: cargo build --verbose
+      
+  test:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Test
+      run: cargo test --verbose
+
