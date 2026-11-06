@@ -24,10 +24,10 @@ jobs:
       uses: jetify-com/devbox-install-action@v0.14.0
 
     - name: Clean
-      run: devbox clean
+      run: devbox run clean
 
     - name: Build
-      run: devbox build
+      run: devbox run build
       
   test:
     runs-on: ubuntu-24.04
