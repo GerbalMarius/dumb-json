@@ -51,7 +51,7 @@ impl std::fmt::Display for JsonParseError {
 }
 
 fn main() {
-    println!("Hello, world!");
+    println!("Hello");
 }
 
 pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, JsonParseError> {
