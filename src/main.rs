@@ -259,8 +259,25 @@ pub mod tests {
         let res = tokenize(input);
 
         assert!(res.is_ok());
+
+        let tokens = res.unwrap();
         
-        let item  = &res.unwrap()[0];
+        let item  = &tokens[0];
+
+        let actual = item.number() as i32;
+
+        assert_eq!(actual, input.parse::<i32>().unwrap());
+    }
+
+    #[test]
+    fn tokenize_with_negative_integer_parses_the_number_tokens() {
+        let input = "-1";
+        let res = tokenize(input);
+
+        assert!(res.is_ok());
+        let tokens = res.unwrap();
+
+        let item = &tokens[0];
 
         let actual = item.number() as i32;
 
