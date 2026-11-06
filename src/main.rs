@@ -97,6 +97,9 @@ pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, JsonParseError> {
             }
             'f' | 't' => {
                 tokens.push(JsonToken::Bool(parse_bool(&mut chars)?));
+            },
+            'n' => {
+                tokens.push(parse_null(&mut chars)?);
             }
             _ if ch.is_whitespace() => continue,
             _ => return  Err(JsonParseError::new(&format!("Inproperly formed json string: {}", input)))
@@ -104,6 +107,18 @@ pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, JsonParseError> {
     }
 
     Ok(tokens)
+}
+
+fn parse_null(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<JsonToken, JsonParseError> {
+    const NULL_LITERAL: &str = "null";
+
+    for expected in NULL_LITERAL.chars() {
+        match chars.next() {
+            Some(actual) if actual == expected => continue,
+            _ => return Err(JsonParseError::new("Invalid null literal")) 
+        }
+    }
+    Ok(JsonToken::Nil)
 }
 
 fn parse_bool(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<bool, JsonParseError> {
@@ -242,7 +257,9 @@ fn parse_str_literal(
 
 #[cfg(test)]
 pub mod tests {
-    use super::*;
+    use parameterized::parameterized;
+
+use super::*;
 
     #[test]
     fn tokenize_with_empty_str_parses_zero_tokens() {
@@ -283,4 +300,25 @@ pub mod tests {
 
         assert_eq!(actual, input.parse::<i32>().unwrap());
     }
+
+    #[parameterized(input = {
+        "1.0", "-1.523", "1e6", "1e-2", "-1e2"
+    }, 
+    expected = {
+        1.0, -1.523, 1000_000.0, 0.01, -100.0
+    })]
+    fn tokenize_with_float_parses_the_number_tokens(input: &str, expected: f64) {
+        let res = tokenize(input);
+        assert!(res.is_ok());
+
+        let tokens = res.unwrap();
+
+        let item = &tokens[0];
+
+        let actual = item.number();
+
+        assert!((actual - expected).abs() < f64::EPSILON);       
+    }
+
+
 }

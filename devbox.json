@@ -1,5 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.19.0/.schema/devbox.schema.json",
+  "name": "Environment for running ci/cd for rust",
   "packages": [
     "rustup@latest"
   ],
