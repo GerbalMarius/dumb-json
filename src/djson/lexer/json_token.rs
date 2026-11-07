@@ -1,7 +1,5 @@
 use crate::djson::lexer::bracket::Bracket;
 
-
-
 #[derive(Debug, PartialEq)]
 pub(crate) enum JsonToken {
     Bracket(Bracket),
