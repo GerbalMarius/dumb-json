@@ -1,12 +1,11 @@
-use crate::JsonToken::Number;
-
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
 pub enum Bracket {
     CurlyOpen,
     CurlyClosed,
     SquareOpen,
-    SquareClosed,
+    SquareClosed
 }
 
 #[derive(Debug, PartialEq)]
@@ -17,16 +16,55 @@ pub enum JsonToken {
     String(String),
     Number(f64),
     Bool(bool),
-    Nil,
+    Nil
 }
 
 impl JsonToken {
     pub fn number(&self) -> f64 {
-        if let Number(num) = self  {
+        if let JsonToken::Number(num) = self  {
             return  *num;
         }
         else {
             panic!("Json token is not a number");
+        }
+    }
+
+    pub fn string(&self) -> String {
+        if let JsonToken::String(s) = self {
+            return  s.to_string();
+        }
+        else {
+            panic!("Json token is not a string");
+        }
+    }
+
+    pub fn boolean(&self) -> bool {
+        if let JsonToken::Bool(b) = self {
+            return *b;
+        }
+        else {
+            panic!("Json token is not a bool");
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum JsonValue {
+    Object(HashMap<String, JsonValue>),
+    Array(Vec<JsonValue>),
+    String(String),
+    Number(f64),
+    Bool(bool),
+    Nil
+}
+
+impl JsonValue {
+    pub fn string(&self) -> String {
+        if let JsonValue::String(s) = self {
+             s.to_string()
+        }
+        else {
+            panic!("json is not a valid string")
         }
     }
 }
@@ -47,6 +85,161 @@ impl JsonParseError {
 impl std::fmt::Display for JsonParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self.msg)
+    }
+}
+
+type JsonResult = Result<JsonValue, JsonParseError>;
+
+#[derive(Debug)]
+pub struct JsonParser {
+    tokens: std::iter::Peekable<std::vec::IntoIter<JsonToken>>,
+    max_depth: usize,
+}
+
+impl JsonParser {
+
+    pub fn new(tokens: Vec<JsonToken>, max_depth: usize) -> Self {
+        Self { 
+            tokens: tokens.into_iter().peekable(), 
+            max_depth
+        }
+    }
+
+    pub fn parse(&mut self, current_depth: usize) -> JsonResult {
+        if current_depth >= self.max_depth {
+            return Err(JsonParseError::new(&format!("Max depth={} exceeded, current_depth={}", self.max_depth, current_depth)));
+        }
+
+        match self.tokens.peek() {
+
+            Some(JsonToken::Bracket(Bracket::CurlyOpen)) => {
+                self.parse_object(current_depth)
+            }
+
+            Some(JsonToken::Bracket(Bracket::SquareOpen)) => {
+                self.parse_array(current_depth)
+            }
+
+            Some(JsonToken::String(_)) => {
+                self.parse_string()
+            }
+
+            Some(JsonToken::Number(_)) => {
+                self.parse_number()
+            }
+            
+            Some(JsonToken::Bool(_)) => {
+                self.parse_bool()
+            }
+
+            Some(JsonToken::Nil) => {
+                self.parse_null()
+            }
+
+            _ => Err(JsonParseError::new("Expected a valid json token"))
+        }
+    }
+
+    fn parse_object(&mut self, current_depth: usize) -> JsonResult {
+        
+        self.tokens.next(); 
+
+        if let Some(JsonToken::Bracket(Bracket::CurlyClosed)) = self.tokens.peek() {
+            return Ok(JsonValue::Object(HashMap::new()));
+        }
+
+        let mut json_object: HashMap<String, JsonValue> = HashMap::new();
+
+        loop {
+            let key_token = self.parse(current_depth + 1)?;
+
+            if !matches!(key_token, JsonValue::String(_)) {
+                return Err(JsonParseError::new(&format!("key must be valid string instead got: {:?}", key_token)));
+            }
+
+            let key = key_token.string();
+
+            if !matches!(self.tokens.peek(), Some(JsonToken::Colon)) {
+                return Err(JsonParseError::new(&format!("Key={} must be followed by a colon", &key)));
+            }
+
+            let value = self.parse(current_depth + 1)?;
+
+            json_object.insert(key, value);
+
+            match self.tokens.peek() {
+                Some(JsonToken::Comma) => {
+                    self.tokens.next();
+                    continue;
+                }
+                Some(JsonToken::Bracket(Bracket::CurlyClosed)) => {
+                    return Ok(JsonValue::Object(json_object));
+                }
+                Some(token) => {
+                    return Err(JsonParseError::new(&format!("Unexpected token when parsing json object: {:?}", token)));
+                }
+                None => {
+                    return Err(JsonParseError::new("Unexpected end of json object"));
+                }
+            }
+
+        }
+    }
+
+    fn parse_array(&mut self, current_depth: usize) -> JsonResult {
+        self.tokens.next();
+
+        if let Some(JsonToken::Bracket(Bracket::SquareClosed)) = self.tokens.peek() {
+            return  Ok(JsonValue::Array(Vec::new()));
+        }
+
+        let mut values: Vec<JsonValue> = Vec::new();
+
+        loop {
+            let value = self.parse(current_depth + 1)?;
+
+            values.push(value);
+
+            match self.tokens.peek() {
+                Some(JsonToken::Comma) => {
+                    self.tokens.next();
+                    continue;
+                }
+                Some(JsonToken::Bracket(Bracket::SquareClosed)) => {
+                    return Ok(JsonValue::Array(values));
+                }
+                Some(token) => {
+                    return Err(JsonParseError::new(&format!("Unexpected token when parsing array: {:?}", token)));
+                }
+                None => {
+                    return Err(JsonParseError::new("Unexpected end of array json"));
+                }
+            }
+        }
+    }
+
+    fn parse_string(&mut self) -> JsonResult {
+        self.tokens.next().filter(|t| matches!(*t, JsonToken::String(_)))
+                          .map(|t| JsonValue::String(t.string()))
+                          .ok_or(JsonParseError::new("Expected a valid string token"))
+    }
+
+    fn parse_number(&mut self) -> JsonResult {
+        self.tokens.next().filter(|t| matches!(*t, JsonToken::Number(_)))
+                         .map(|t| JsonValue::Number(t.number()))
+                         .ok_or(JsonParseError::new("Expected a valid number token"))
+    }
+
+    fn parse_bool(&mut self) -> JsonResult {
+       self.tokens.next().filter(|t| matches!(*t, JsonToken::Bool(_)))
+                         .map(|t| JsonValue::Bool(t.boolean()))
+                         .ok_or(JsonParseError::new("Expected a valid bool token"))
+    }
+
+    fn parse_null(&mut self) -> JsonResult {
+          self.tokens.next().filter(|t| *t == JsonToken::Nil)
+                            .map(|_| JsonValue::Nil)
+                            .ok_or(JsonParseError::new("Expected a valid null token"))
     }
 }
 
@@ -90,16 +283,16 @@ pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, JsonParseError> {
                 chars.next();
             }
             '"' => {
-                tokens.push(JsonToken::String(parse_str_literal(&mut chars)?));
+                tokens.push(JsonToken::String(tok_str_literal(&mut chars)?));
             }
             '0'..='9' | '-' => {
-                tokens.push(JsonToken::Number(parse_number(&mut chars)?));
+                tokens.push(JsonToken::Number(tok_number(&mut chars)?));
             }
             'f' | 't' => {
-                tokens.push(JsonToken::Bool(parse_bool(&mut chars)?));
+                tokens.push(JsonToken::Bool(tok_bool(&mut chars)?));
             },
             'n' => {
-                tokens.push(parse_null(&mut chars)?);
+                tokens.push(tok_null(&mut chars)?);
             }
             _ if ch.is_whitespace() => continue,
             _ => return  Err(JsonParseError::new(&format!("Inproperly formed json string: {}", input)))
@@ -109,7 +302,7 @@ pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, JsonParseError> {
     Ok(tokens)
 }
 
-fn parse_null(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<JsonToken, JsonParseError> {
+fn tok_null(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<JsonToken, JsonParseError> {
     const NULL_LITERAL: &str = "null";
 
     for expected in NULL_LITERAL.chars() {
@@ -121,7 +314,7 @@ fn parse_null(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<Js
     Ok(JsonToken::Nil)
 }
 
-fn parse_bool(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<bool, JsonParseError> {
+fn tok_bool(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<bool, JsonParseError> {
     const TRUE_LITERAL: &str = "true";
     const FALSE_LITERAL: &str = "false";
 
@@ -141,7 +334,7 @@ fn parse_bool(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<bo
     return  Ok(literal == TRUE_LITERAL);
 }
 
-fn parse_number(
+fn tok_number(
     chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
 ) -> Result<f64, JsonParseError> {
     let mut buff = String::new();
@@ -215,10 +408,10 @@ fn parse_number(
     }
 
     buff.parse::<f64>()
-        .map_err(|_| JsonParseError::new(ERR_MSG))
+        .map_err(|err| JsonParseError::new(&err.to_string()))
 }
 
-fn parse_str_literal(
+fn tok_str_literal(
     chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
 ) -> Result<String, JsonParseError> {
     let mut buff = String::new();
@@ -259,7 +452,7 @@ fn parse_str_literal(
 pub mod tests {
     use parameterized::parameterized;
 
-use super::*;
+    use super::*;
 
     #[test]
     fn tokenize_with_empty_str_parses_zero_tokens() {
@@ -317,7 +510,7 @@ use super::*;
 
         let actual = item.number();
 
-        assert!((actual - expected).abs() < f64::EPSILON);       
+        assert!((actual - expected).abs() < f64::EPSILON, "actual={}, expected={}", actual, expected);       
     }
 
 
