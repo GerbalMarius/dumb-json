@@ -9,4 +9,5 @@ fn main()  {
     let emotion = result.get("emotion").unwrap().string();
 
     println!("age={}, name={}, emotion={}", age, name, emotion);
+    println!();
 }
