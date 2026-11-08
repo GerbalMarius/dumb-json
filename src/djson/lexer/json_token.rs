@@ -12,6 +12,7 @@ pub(crate) enum JsonToken {
 }
 
 impl JsonToken {
+    //helpers for extracting terminal tokens, used internally, do not care if they crash only
     pub fn number(&self) -> f64 {
         if let JsonToken::Number(num) = self {
             return *num;

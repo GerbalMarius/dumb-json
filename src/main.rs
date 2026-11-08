@@ -1,5 +1,7 @@
 pub mod djson;
 
+const EXAMPLE_PATH: &str = "people.json";
+
 fn main() -> djson::Result<()>  {
     let input = "{\"age\": 0, \"name\": \"Marius\", \"emotion\":\"😊\"}";
     let result = djson::decode_json_str(input).unwrap();
@@ -14,7 +16,7 @@ fn main() -> djson::Result<()>  {
 
     println!("Reading from a file: ");
 
-    let file_result = djson::decode_file("people.json").unwrap();
+    let file_result = djson::decode_file(EXAMPLE_PATH).unwrap();
 
     let people = file_result.get("people").unwrap().array()?;
 

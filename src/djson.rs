@@ -2,6 +2,8 @@ mod lexer;
 
 use std::collections::HashMap;
 
+//can use btree instead of hashmap for lower memory consumption as well,
+//but the faster search is more useful imo
 #[derive(Debug)]
 pub enum JsonValue {
     Object(HashMap<String, JsonValue>),
@@ -49,7 +51,7 @@ impl JsonValue {
     pub fn bool(&self) -> Result<bool> {
         match self {
             JsonValue::Bool(value) => Ok(*value),
-            _ => Err(JsonFormatError::InvalidArray)
+            _ => Err(JsonFormatError::InvalidBool)
         }
     }
 }
@@ -66,7 +68,6 @@ pub enum JsonFormatError {
     InvalidNull,
 }
 
-#[allow(unused)]
 impl std::fmt::Display for JsonFormatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let output_str: &str = match self {
@@ -116,7 +117,8 @@ pub fn decode_json_str(input: &str) -> Result<JsonValue> {
 
     let mut parser = internal::JsonParser::with_defaults(tokens);
 
-    return parser.parse(0).map_err(|err| JsonFormatError::ParsingIssue(err.msg));
+    return parser.parse(0)
+                 .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
 }
 
 pub fn decode_file<P>(file_path: P) -> Result<JsonValue> 
@@ -126,7 +128,8 @@ where P: AsRef<std::path::Path> {
     
     let mut parser = internal::JsonParser::with_defaults(tokens);
 
-    return parser.parse(0).map_err(|err| JsonFormatError::ParsingIssue(err.msg));
+    return parser.parse(0)
+                 .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
 }
 
 pub fn encode<T>(item: &T) -> String
@@ -152,7 +155,7 @@ mod internal {
     };
     use std::collections::HashMap;
 
-    type JsonResult = Result<JsonValue, JsonParseError>;
+    type JsonParserResult = Result<JsonValue, JsonParseError>;
 
     #[derive(Debug)]
     pub struct JsonParser {
@@ -172,7 +175,7 @@ mod internal {
             }
         }
 
-        pub fn parse(&mut self, current_depth: usize) -> JsonResult {
+        pub fn parse(&mut self, current_depth: usize) -> JsonParserResult {
             if current_depth >= self.max_depth {
                 return Err(JsonParseError::new(&format!(
                     "Max depth={} exceeded, current_depth={}",
@@ -197,7 +200,7 @@ mod internal {
             }
         }
 
-        fn parse_object(&mut self, current_depth: usize) -> JsonResult {
+        fn parse_object(&mut self, current_depth: usize) -> JsonParserResult {
             self.tokens.next();
 
             if let Some(JsonToken::Bracket(Bracket::CurlyClosed)) = self.tokens.peek() {
@@ -252,7 +255,7 @@ mod internal {
             }
         }
 
-        fn parse_array(&mut self, current_depth: usize) -> JsonResult {
+        fn parse_array(&mut self, current_depth: usize) -> JsonParserResult {
             self.tokens.next();
 
             if let Some(JsonToken::Bracket(Bracket::SquareClosed)) = self.tokens.peek() {
@@ -288,7 +291,7 @@ mod internal {
             }
         }
 
-        fn parse_string(&mut self) -> JsonResult {
+        fn parse_string(&mut self) -> JsonParserResult {
             self.tokens
                 .next()
                 .filter(|t| matches!(*t, JsonToken::String(_)))
@@ -296,7 +299,7 @@ mod internal {
                 .ok_or(JsonParseError::new("Expected a valid string token"))
         }
 
-        fn parse_number(&mut self) -> JsonResult {
+        fn parse_number(&mut self) -> JsonParserResult {
             self.tokens
                 .next()
                 .filter(|t| matches!(*t, JsonToken::Number(_)))
@@ -304,7 +307,7 @@ mod internal {
                 .ok_or(JsonParseError::new("Expected a valid number token"))
         }
 
-        fn parse_bool(&mut self) -> JsonResult {
+        fn parse_bool(&mut self) -> JsonParserResult {
             self.tokens
                 .next()
                 .filter(|t| matches!(*t, JsonToken::Bool(_)))
@@ -312,7 +315,7 @@ mod internal {
                 .ok_or(JsonParseError::new("Expected a valid bool token"))
         }
 
-        fn parse_null(&mut self) -> JsonResult {
+        fn parse_null(&mut self) -> JsonParserResult {
             self.tokens
                 .next()
                 .filter(|t| *t == JsonToken::Nil)

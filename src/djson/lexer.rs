@@ -12,7 +12,8 @@ pub fn tokenize_str(input: &str) -> Result<Vec<JsonToken>, String> {
 
 pub fn tokenize_path<P>(file_path: P) -> Result<Vec<JsonToken>, String>
 where P: AsRef<Path> {
-    let file = File::open(file_path).map_err(|err| err.to_string())?;
+    let file = File::open(file_path)
+                            .map_err(|err| format!("ERROR while reading file:{}", err.to_string()))?;
 
     let mut reader: BufReader<File> = BufReader::new(file);
     let mut tokens: Vec<JsonToken> = Vec::new();
@@ -35,7 +36,7 @@ where P: AsRef<Path> {
 
 fn tokenize<I>(chars: I ) -> Result<Vec<JsonToken>, String>
 where I : Iterator<Item = char> {
-    let mut iter_peekable = chars.peekable();
+    let mut iter_peekable = chars.peekable(); //make it peekable, so that we could look ahead
 
     let mut tokens = Vec::<JsonToken>::new();
 
@@ -256,7 +257,7 @@ mod tests {
         }
 
         #[test]
-        fn tokenize_with_integer_parses_the_number_tokens() {
+        fn tokenize_with_integer_tokenizes_the_number_tokens() {
                 let input = "1";
                 let res = tokenize_str(input);
 
@@ -266,7 +267,23 @@ mod tests {
                 
                 let item  = &tokens[0];
 
-                assert_matches!(item, JsonToken::Number(1.0))
+                assert_matches!(item, JsonToken::Number(1.0));
+        }
+
+        #[parameterized(input = {
+            "1e+", "1e-", "1e", "1e+-", "e", "e+-", "e+", "e-"
+        })]
+        fn tokenize_with_invalid_exponent_fails(input: &str) {
+            let actual = tokenize_str(input);
+            assert!(actual.is_err(), "tokenizer should fail, but instead got {:?}", actual);
+        }
+
+        #[test]
+        fn tokenize_with_integer_trailing_zeros_tokenizing_fails() {
+            let input = "01";
+            let res = tokenize_str(input);
+
+            assert!(res.is_err(), "tokenizer should fail, but instead got {:?}", res);
         }
 
         #[test]
@@ -274,7 +291,7 @@ mod tests {
                 let input = "-1";
                 let res = tokenize_str(input);
 
-                assert!(res.is_ok());
+                assert!(res.is_ok(), "tokenizer should not fail, but instead got {:?}", res);
                 let tokens = res.unwrap();
 
                 let item = &tokens[0];
