@@ -1,0 +1,39 @@
+{
+  "people": [
+    {
+      "age": 18,
+      "name": "Alice",
+      "emotion": "😊"
+    },
+    {
+      "age": 22,
+      "name": "Bob",
+      "emotion": "😎"
+    },
+    {
+      "age": 15,
+      "name": "Charlie",
+      "emotion": "😢"
+    },
+    {
+      "age": 25,
+      "name": "Diana",
+      "emotion": "😍"
+    },
+    {
+      "age": 9,
+      "name": "Ethan",
+      "emotion": "😡"
+    },
+    {
+      "age": 12,
+      "name": "Sophia",
+      "emotion": "🥳"
+    },
+    {
+      "age": 5,
+      "name": "Oliver",
+      "emotion": "🤔"
+    }
+  ]
+}
