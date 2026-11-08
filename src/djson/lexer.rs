@@ -1,56 +1,86 @@
+use std::{fs::File, io::{BufRead, BufReader}, path::Path};
+
 use crate::djson::{lexer::{bracket::Bracket, json_token::JsonToken}};
 
 pub(crate) mod bracket;
 pub(crate) mod json_token;
 
 
-pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, String> {
-    let mut chars = input.chars().peekable();
+pub fn tokenize_str(input: &str) -> Result<Vec<JsonToken>, String> {
+    tokenize(input.chars())
+}
+
+pub fn tokenize_path<P>(file_path: P) -> Result<Vec<JsonToken>, String>
+where P: AsRef<Path> {
+    let file = File::open(file_path).map_err(|err| err.to_string())?;
+
+    let mut reader: BufReader<File> = BufReader::new(file);
+    let mut tokens: Vec<JsonToken> = Vec::new();
+    let mut current_line = String::new();
+
+    loop {
+        current_line.clear();
+
+        let bytes_read = reader.read_line(&mut current_line)
+                                      .map_err(|err| err.to_string())?;
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        tokens.extend(tokenize(current_line.chars())?);
+    }
+    return Ok(tokens);
+}
+
+fn tokenize<I>(chars: I ) -> Result<Vec<JsonToken>, String>
+where I : Iterator<Item = char> {
+    let mut iter_peekable = chars.peekable();
 
     let mut tokens = Vec::<JsonToken>::new();
 
-    while let Some(ch) = chars.peek() {
+    while let Some(ch) = iter_peekable.peek() {
         match ch {
             '{' => {
                 tokens.push(JsonToken::Bracket(Bracket::CurlyOpen));
-                chars.next();
+                iter_peekable.next();
             }
             '}' => {
                 tokens.push(JsonToken::Bracket(Bracket::CurlyClosed));
-                chars.next();
+                iter_peekable.next();
             }
             '[' => {
                 tokens.push(JsonToken::Bracket(Bracket::SquareOpen));
-                chars.next();
+                iter_peekable.next();
             }
             ']' => {
                 tokens.push(JsonToken::Bracket(Bracket::SquareClosed));
-                chars.next();
+                iter_peekable.next();
             }
             ':' => {
                 tokens.push(JsonToken::Colon);
-                chars.next();
+                iter_peekable.next();
             }
             ',' => {
                 tokens.push(JsonToken::Comma);
-                chars.next();
+                iter_peekable.next();
             }
             '"' => {
-                tokens.push(JsonToken::String(tok_str_literal(&mut chars)?));
+                tokens.push(JsonToken::String(tok_str_literal(&mut iter_peekable)?));
             }
             '0'..='9' | '-' => {
-                tokens.push(JsonToken::Number(tok_number(&mut chars)?));
+                tokens.push(JsonToken::Number(tok_number(&mut iter_peekable)?));
             }
             'f' | 't' => {
-                tokens.push(JsonToken::Bool(tok_bool(&mut chars)?));
+                tokens.push(JsonToken::Bool(tok_bool(&mut iter_peekable)?));
             },
             'n' => {
-                tokens.push(tok_null(&mut chars)?);
+                tokens.push(tok_null(&mut iter_peekable)?);
             }
             _ if ch.is_whitespace() => {
-                chars.next();
+                iter_peekable.next();
             }
-            _ => return  Err(format!("Inproperly formed json string: {}", input))
+            _ => return  Err(format!("Inproperly formed json string: {}", iter_peekable.collect::<String>()))
         }
     }
 
@@ -58,7 +88,9 @@ pub fn tokenize(input: &str) -> Result<Vec<JsonToken>, String> {
 }
 
 
-fn tok_null(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<JsonToken, String> {
+
+fn tok_null<I>(chars: &mut std::iter::Peekable<I>) -> Result<JsonToken, String>
+where I: Iterator<Item = char> {
     const NULL_LITERAL: &str = "null";
 
     for expected in NULL_LITERAL.chars() {
@@ -70,7 +102,8 @@ fn tok_null(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<Json
     Ok(JsonToken::Nil)
 }
 
-fn tok_bool(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<bool, String> {
+fn tok_bool<I>(chars: &mut std::iter::Peekable<I>) -> Result<bool, String>
+where I: Iterator<Item = char>  {
     const TRUE_LITERAL: &str = "true";
     const FALSE_LITERAL: &str = "false";
 
@@ -90,9 +123,10 @@ fn tok_bool(chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> Result<bool
     return  Ok(literal == TRUE_LITERAL);
 }
 
-fn tok_number(
-    chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
-) -> Result<f64, String> {
+fn tok_number<I>(
+    chars: &mut std::iter::Peekable<I>,
+) -> Result<f64, String>
+where I: Iterator<Item = char> {
     let mut buff = String::new();
 
     const ERR_MSG: &str = "Invalid number";
@@ -167,9 +201,10 @@ fn tok_number(
         .map_err(|err| err.to_string())
 }
 
-fn tok_str_literal(
-    chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
-) -> Result<String, String> {
+fn tok_str_literal<I>(
+    chars: &mut std::iter::Peekable<I>,
+) -> Result<String, String>
+where I: Iterator<Item = char> {
     let mut buff = String::new();
     chars.next(); //skip opening quote
 
@@ -215,7 +250,7 @@ mod tests {
         fn tokenize_with_empty_str_parses_zero_tokens() {
                 let input = "";
 
-                let res = tokenize(input);
+                let res = tokenize_str(input);
                 assert!(res.is_ok());
                 assert!(res.unwrap().is_empty());
         }
@@ -223,7 +258,7 @@ mod tests {
         #[test]
         fn tokenize_with_integer_parses_the_number_tokens() {
                 let input = "1";
-                let res = tokenize(input);
+                let res = tokenize_str(input);
 
                 assert!(res.is_ok());
 
@@ -237,7 +272,7 @@ mod tests {
         #[test]
         fn tokenize_with_negative_integer_parses_the_number_tokens() {
                 let input = "-1";
-                let res = tokenize(input);
+                let res = tokenize_str(input);
 
                 assert!(res.is_ok());
                 let tokens = res.unwrap();
@@ -254,7 +289,7 @@ mod tests {
                 1.0, -1.523, 1000_000.0, 0.01, -100.0
         })]
         fn tokenize_with_float_parses_the_number_tokens(input: &str, expected: f64) {
-                let res = tokenize(input);
+                let res = tokenize_str(input);
                 assert!(res.is_ok());
 
                 let tokens = res.unwrap();

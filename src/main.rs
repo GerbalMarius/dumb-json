@@ -1,13 +1,30 @@
 pub mod djson;
 
-fn main()  {
+fn main() -> djson::Result<()>  {
     let input = "{\"age\": 0, \"name\": \"Marius\", \"emotion\":\"😊\"}";
     let result = djson::decode_json_str(input).unwrap();
     
-    let age = result.get("age").unwrap().number();
-    let name = result.get("name").unwrap().string();
-    let emotion = result.get("emotion").unwrap().string();
+    let age = result.get("age").unwrap().number()?;
+    let name = result.get("name").unwrap().string()?;
+    let emotion = result.get("emotion").unwrap().string()?;
 
     println!("age={}, name={}, emotion={}", age, name, emotion);
+
     println!();
+
+    println!("Reading from a file: ");
+
+    let file_result = djson::decode_file("people.json").unwrap();
+
+    let people = file_result.get("people").unwrap().array()?;
+
+    for person in people {
+        let age = person.get("age").unwrap().number()?;
+        let name = person.get("name").unwrap().string()?;
+        let emotion = person.get("emotion").unwrap().string()?;
+
+        println!("age={}, name={}, emotion={}", age, name, emotion);
+    }
+
+    Ok(())
 }

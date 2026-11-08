@@ -12,8 +12,10 @@ pub enum JsonValue {
     Nil,
 }
 
+pub type Result<T> = core::result::Result<T, JsonFormatError>;
+
 impl JsonValue {
-    pub fn get(&self, key: &str) -> Result<&JsonValue, JsonFormatError> {
+    pub fn get(&self, key: &str) -> Result<&JsonValue> {
         match self {
             JsonValue::Object(obj) => {
                 let err = JsonFormatError::MissingKey(format!("key={} not found in object", key));
@@ -23,35 +25,31 @@ impl JsonValue {
         }
     }
 
-    pub fn array(&self) -> &[JsonValue] {
-        if let JsonValue::Array(values) = self {
-            values
-        } else {
-            panic!("json is not a valid array")
+    pub fn array(&self) -> Result<&[JsonValue]> {
+        match self {
+            JsonValue::Array(values) => Ok(values),
+            _ => Err(JsonFormatError::InvalidArray)
         }
     }
 
-    pub fn string(&self) -> &str {
-        if let JsonValue::String(string) = self {
-            string
-        } else {
-            panic!("json is not a valid string")
+    pub fn string(&self) -> Result<&str> {
+        match self {
+            JsonValue::String(value) => Ok(value),
+            _ => Err(JsonFormatError::InvalidString)
         }
     }
 
-    pub fn number(&self) -> f64 {
-        if let JsonValue::Number(number) = self {
-            *number
-        } else {
-            panic!("json is not a valid number")
+    pub fn number(&self) -> Result<f64> {
+        match self {
+            JsonValue::Number(value) => Ok(*value),
+            _ => Err(JsonFormatError::InvalidNumber)
         }
     }
 
-    pub fn bool(&self) -> bool {
-        if let JsonValue::Bool(boolean) = self {
-            *boolean
-        } else {
-            panic!("json is not a valid boolean")
+    pub fn bool(&self) -> Result<bool> {
+        match self {
+            JsonValue::Bool(value) => Ok(*value),
+            _ => Err(JsonFormatError::InvalidArray)
         }
     }
 }
@@ -71,7 +69,17 @@ pub enum JsonFormatError {
 #[allow(unused)]
 impl std::fmt::Display for JsonFormatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        let output_str: &str = match self {
+            JsonFormatError::MissingKey(msg) => msg,
+            JsonFormatError::ParsingIssue(msg) => msg,
+            JsonFormatError::InvalidObject => "Value is not a valid json object",
+            JsonFormatError::InvalidArray => "Value is not a valid json array",
+            JsonFormatError::InvalidString => "Value is not a valid json string",
+            JsonFormatError::InvalidNumber => "Value is not a valid json number",
+            JsonFormatError::InvalidBool => "Value is not a valid json boolean",
+            JsonFormatError::InvalidNull => "Value is not a valid json null value",
+        };
+        f.write_str(output_str)
     }
 }
 
@@ -99,12 +107,23 @@ pub trait Encode {
 }
 
 pub trait Decode<T> {
-    fn decode(json: JsonValue) -> Result<T, JsonFormatError>;
+    fn decode(json: JsonValue) -> Result<T>;
 }
 
-pub fn decode_json_str(input: &str) -> Result<JsonValue, JsonFormatError> {
-    let tokens = lexer::tokenize(input).map_err(|err| JsonFormatError::ParsingIssue(err))?;
+pub fn decode_json_str(input: &str) -> Result<JsonValue> {
+    let tokens = lexer::tokenize_str(input)
+                                    .map_err(|err| JsonFormatError::ParsingIssue(err))?;
 
+    let mut parser = internal::JsonParser::with_defaults(tokens);
+
+    return parser.parse(0).map_err(|err| JsonFormatError::ParsingIssue(err.msg));
+}
+
+pub fn decode_file<P>(file_path: P) -> Result<JsonValue> 
+where P: AsRef<std::path::Path> {
+    let tokens = lexer::tokenize_path(file_path)
+                                    .map_err(|err| JsonFormatError::ParsingIssue(err))?;
+    
     let mut parser = internal::JsonParser::with_defaults(tokens);
 
     return parser.parse(0).map_err(|err| JsonFormatError::ParsingIssue(err.msg));
@@ -117,7 +136,7 @@ where
     item.encode()
 }
 
-pub fn decode<T>(json_str: &str) -> Result<T, JsonFormatError>
+pub fn decode<T>(json_str: &str) -> Result<T>
 where
     T: Decode<T>,
 {
@@ -197,7 +216,7 @@ mod internal {
                     )));
                 }
 
-                let key = key_token.string();
+                let key = key_token.string().expect("key_token is a valid string when entering this branch");
 
                 if !matches!(self.tokens.peek(), Some(JsonToken::Colon)) {
                     return Err(JsonParseError::new(&format!(
@@ -217,6 +236,7 @@ mod internal {
                         continue;
                     }
                     Some(JsonToken::Bracket(Bracket::CurlyClosed)) => {
+                        self.tokens.next();//consume the closing brace;
                         return Ok(JsonValue::Object(json_object));
                     }
                     Some(token) => {
@@ -252,6 +272,7 @@ mod internal {
                         continue;
                     }
                     Some(JsonToken::Bracket(Bracket::SquareClosed)) => {
+                        self.tokens.next(); //consume the closing brace
                         return Ok(JsonValue::Array(values));
                     }
                     Some(token) => {
