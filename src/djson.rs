@@ -204,6 +204,7 @@ mod internal {
             self.tokens.next();
 
             if let Some(JsonToken::Bracket(Bracket::CurlyClosed)) = self.tokens.peek() {
+                self.tokens.next();
                 return Ok(JsonValue::Object(HashMap::new()));
             }
 
@@ -259,6 +260,7 @@ mod internal {
             self.tokens.next();
 
             if let Some(JsonToken::Bracket(Bracket::SquareClosed)) = self.tokens.peek() {
+                self.tokens.next();
                 return Ok(JsonValue::Array(Vec::new()));
             }
 

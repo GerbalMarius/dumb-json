@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufRead, BufReader}, path::Path};
+use std::{fs::File, io::{BufRead, BufReader}, path::Path, str::Chars};
 
 use crate::djson::{lexer::{bracket::Bracket, json_token::JsonToken}};
 
@@ -34,8 +34,7 @@ where P: AsRef<Path> {
     return Ok(tokens);
 }
 
-fn tokenize<I>(chars: I ) -> Result<Vec<JsonToken>, String>
-where I : Iterator<Item = char> {
+fn tokenize(chars: Chars<'_> ) -> Result<Vec<JsonToken>, String> {
     let mut iter_peekable = chars.peekable(); //make it peekable, so that we could look ahead
 
     let mut tokens = Vec::<JsonToken>::new();
@@ -90,8 +89,7 @@ where I : Iterator<Item = char> {
 
 
 
-fn tok_null<I>(chars: &mut std::iter::Peekable<I>) -> Result<JsonToken, String>
-where I: Iterator<Item = char> {
+fn tok_null(chars: &mut std::iter::Peekable<Chars<'_>>) -> Result<JsonToken, String> {
     const NULL_LITERAL: &str = "null";
 
     for expected in NULL_LITERAL.chars() {
@@ -103,8 +101,7 @@ where I: Iterator<Item = char> {
     Ok(JsonToken::Nil)
 }
 
-fn tok_bool<I>(chars: &mut std::iter::Peekable<I>) -> Result<bool, String>
-where I: Iterator<Item = char>  {
+fn tok_bool(chars: &mut std::iter::Peekable<Chars<'_>>) -> Result<bool, String> {
     const TRUE_LITERAL: &str = "true";
     const FALSE_LITERAL: &str = "false";
 
@@ -124,10 +121,9 @@ where I: Iterator<Item = char>  {
     return  Ok(literal == TRUE_LITERAL);
 }
 
-fn tok_number<I>(
-    chars: &mut std::iter::Peekable<I>,
-) -> Result<f64, String>
-where I: Iterator<Item = char> {
+fn tok_number(
+    chars: &mut std::iter::Peekable<Chars<'_>>,
+) -> Result<f64, String> {
     let mut buff = String::new();
 
     const ERR_MSG: &str = "Invalid number";
@@ -202,10 +198,9 @@ where I: Iterator<Item = char> {
         .map_err(|err| err.to_string())
 }
 
-fn tok_str_literal<I>(
-    chars: &mut std::iter::Peekable<I>,
-) -> Result<String, String>
-where I: Iterator<Item = char> {
+fn tok_str_literal(
+    chars: &mut std::iter::Peekable<Chars<'_>>,
+) -> Result<String, String> {
     let mut buff = String::new();
     chars.next(); //skip opening quote
 
@@ -274,6 +269,14 @@ mod tests {
             "1e+", "1e-", "1e", "1e+-", "e", "e+-", "e+", "e-"
         })]
         fn tokenize_with_invalid_exponent_fails(input: &str) {
+            let actual = tokenize_str(input);
+            assert!(actual.is_err(), "tokenizer should fail, but instead got {:?}", actual);
+        }
+
+        #[test]
+        fn tokenize_with_trailing_point_no_numbers_fails() {
+            let input = "1.";
+
             let actual = tokenize_str(input);
             assert!(actual.is_err(), "tokenizer should fail, but instead got {:?}", actual);
         }
