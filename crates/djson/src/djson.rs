@@ -1,7 +1,7 @@
 
 use std::collections::HashMap;
 
-use crate::lexer::lexer;
+use crate::{lexer::lexer, traits::{decode::Decode, encode::Encode}};
 
 //can use btree instead of hashmap for lower memory consumption as well,
 //but the faster search is more useful imo
@@ -102,14 +102,6 @@ impl std::fmt::Display for JsonParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self.msg)
     }
-}
-
-pub trait Encode {
-    fn encode(&self) -> JsonValue;
-}
-
-pub trait Decode<T> {
-    fn decode(json: JsonValue) -> Result<T>;
 }
 
 pub fn decode_json_str(input: &str) -> Result<JsonValue> {

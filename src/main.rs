@@ -13,8 +13,10 @@ fn main() -> djson::Result<()>  {
     let emotion = result.get("emotion").unwrap().string()?;
 
     println!("age={}, name={}, emotion={}", age, name, emotion);
+    let i : i128 = i128::MAX;
 
-    println!();
+    println!("{}", i as f64);
+    println!("{}", f64::MAX);
 
     println!("Reading from a file: ");
 
