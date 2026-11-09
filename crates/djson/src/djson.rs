@@ -129,7 +129,7 @@ pub fn encode<T>(item: &T) -> JsonValue
 where
     T: Encode,
 {
-    item.encode()
+    item.djson_encode()
 }
 
 pub fn decode<T>(json_str: &str) -> Result<T>
