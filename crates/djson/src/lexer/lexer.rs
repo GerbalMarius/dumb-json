@@ -1,9 +1,6 @@
 use std::{fs::File, io::{BufRead, BufReader}, path::Path, str::Chars};
 
-use crate::djson::{lexer::{bracket::Bracket, json_token::JsonToken}};
-
-pub(crate) mod bracket;
-pub(crate) mod json_token;
+use crate::{lexer::{bracket::Bracket, json_token::JsonToken}};
 
 
 pub fn tokenize_str(input: &str) -> Result<Vec<JsonToken>, String> {

@@ -1,0 +1,11 @@
+[package]
+name = "djson"
+version = "1.0.0"
+edition = "2024"
+
+[lints.rust]
+warnings = "deny"
+
+[dependencies]
+parameterized = "2.1.0"
+djson-derive = { path = "../djson-derive" }

@@ -1,7 +1,7 @@
-use crate::djson::lexer::bracket::Bracket;
+use crate::lexer::bracket::Bracket;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum JsonToken {
+pub enum JsonToken {
     Bracket(Bracket),
     Colon,
     Comma,

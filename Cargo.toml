@@ -1,10 +1,16 @@
 [package]
-name = "djson"
+name = "dumb-json"
 version = "0.1.0"
 edition = "2024"
 
 [lints.rust]
 warnings = "deny"
 
+[workspace]
+members = [
+    "crates/djson", "crates/djson-derive",
+]
+resolver = "2"
+
 [dependencies]
-parameterized = "2.1.0"
+djson = { path = "crates/djson" }

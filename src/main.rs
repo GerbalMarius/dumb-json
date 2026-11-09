@@ -1,6 +1,8 @@
-pub mod djson;
+use djson;
+
 
 const EXAMPLE_PATH: &str = "people.json";
+
 
 fn main() -> djson::Result<()>  {
     let input = "{\"age\": 0, \"name\": \"Marius\", \"emotion\":\"😊\"}";

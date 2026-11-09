@@ -1,6 +1,7 @@
-mod lexer;
 
 use std::collections::HashMap;
+
+use crate::lexer::lexer;
 
 //can use btree instead of hashmap for lower memory consumption as well,
 //but the faster search is more useful imo
@@ -104,7 +105,7 @@ impl std::fmt::Display for JsonParseError {
 }
 
 pub trait Encode {
-    fn encode(&self) -> String;
+    fn encode(&self) -> JsonValue;
 }
 
 pub trait Decode<T> {
@@ -132,7 +133,7 @@ where P: AsRef<std::path::Path> {
                  .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
 }
 
-pub fn encode<T>(item: &T) -> String
+pub fn encode<T>(item: &T) -> JsonValue
 where
     T: Encode,
 {
@@ -149,8 +150,8 @@ where
 }
 
 mod internal {
-    use crate::djson::{
-        JsonParseError, JsonValue,
+    use crate::{
+        djson::{JsonParseError, JsonValue},
         lexer::{bracket::Bracket, json_token::JsonToken},
     };
     use std::collections::HashMap;

@@ -4,9 +4,26 @@ version = 4
 
 [[package]]
 name = "djson"
+version = "1.0.0"
+dependencies = [
+ "djson-derive",
+ "parameterized",
+]
+
+[[package]]
+name = "djson-derive"
+version = "1.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "dumb-json"
 version = "0.1.0"
 dependencies = [
- "parameterized",
+ "djson",
 ]
 
 [[package]]
