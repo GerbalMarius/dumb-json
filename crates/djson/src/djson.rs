@@ -67,7 +67,7 @@ impl JsonValue {
         match self {
             JsonValue::UnsignedLong(v) => Ok(*v),
             JsonValue::Long(v) => Ok(*v as u64),
-            _ => Err(JsonFormatError::InvalidInt),
+            _ => Err(JsonFormatError::InvalidUnsingedInt),
         }
     }
 

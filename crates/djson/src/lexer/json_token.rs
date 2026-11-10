@@ -3,7 +3,7 @@ use crate::lexer::bracket::Bracket;
 #[derive(Debug, PartialEq)]
 pub enum JsonToken {
     String(String),
-    Number(String),
+    Number(String),//treat as a string to not lose precision
     Bracket(Bracket),
     Bool(bool),
     Colon,

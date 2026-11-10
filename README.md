@@ -13,7 +13,7 @@ fn main() -> djson::Result<()>  {
     let input = "{\"age\": 0, \"name\": \"Marius\", \"emotion\":\"😊\"}";
     let result: JsonValue = djson::decode_json_str(input).unwrap();
     
-    let age:     f64     = result.get("age").unwrap().number()?;
+    let age:     i32     = result.get("age").unwrap().int()?;
     let name:    &str    = result.get("name").unwrap().string()?;
     let emotion: &str    = result.get("emotion").unwrap().string()?;
 
@@ -33,7 +33,7 @@ fn main() -> djson::Result<()>  {
     let people: &[JsonValue] = file_result.get("people").unwrap().array()?;
 
     for person in people {
-        let age = person.get("age").unwrap().number()?;
+        let age = person.get("age").unwrap().int()?;
         let name = person.get("name").unwrap().string()?;
         let emotion = person.get("emotion").unwrap().string()?;
 
