@@ -8,15 +8,12 @@ fn main() -> djson::Result<()>  {
     let input = "{\"age\": 0, \"name\": \"Marius\", \"emotion\":\"😊\"}";
     let result = djson::decode_json_str(input).unwrap();
     
-    let age = result.get("age").unwrap().number()?;
+    let age = result.get("age").unwrap().unsigned_int()?;
     let name = result.get("name").unwrap().string()?;
     let emotion = result.get("emotion").unwrap().string()?;
 
-    println!("age={}, name={}, emotion={}", age, name, emotion);
-    let i : i128 = i128::MAX;
-
-    println!("{}", i as f64);
-    println!("{}", f64::MAX);
+    println!("age={:?}, name={}, emotion={}", age, name, emotion);
+    println!();
 
     println!("Reading from a file: ");
 
@@ -25,7 +22,7 @@ fn main() -> djson::Result<()>  {
     let people = file_result.get("people").unwrap().array()?;
 
     for person in people {
-        let age = person.get("age").unwrap().number()?;
+        let age = person.get("age").unwrap().unsigned_int()?;
         let name = person.get("name").unwrap().string()?;
         let emotion = person.get("emotion").unwrap().string()?;
 

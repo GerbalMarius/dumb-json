@@ -1,7 +1,9 @@
-
 use std::collections::HashMap;
 
-use crate::{lexer::lexer, traits::{decode::Decode, encode::Encode}};
+use crate::{
+    lexer::lexer,
+    traits::{decode::Decode, encode::Encode},
+};
 
 //can use btree instead of hashmap for lower memory consumption as well,
 //but the faster search is more useful imo
@@ -10,7 +12,11 @@ pub enum JsonValue {
     Object(HashMap<String, JsonValue>),
     Array(Vec<JsonValue>),
     String(String),
-    Number(f64),
+    Float(f64),
+    Long(i64),
+    UnsignedLong(u64),
+    Int(i32),
+    UnsignedInt(u32),
     Bool(bool),
     Nil,
 }
@@ -31,29 +37,88 @@ impl JsonValue {
     pub fn array(&self) -> Result<&[JsonValue]> {
         match self {
             JsonValue::Array(values) => Ok(values),
-            _ => Err(JsonFormatError::InvalidArray)
+            _ => Err(JsonFormatError::InvalidArray),
         }
     }
 
     pub fn string(&self) -> Result<&str> {
         match self {
-            JsonValue::String(value) => Ok(value),
-            _ => Err(JsonFormatError::InvalidString)
+            JsonValue::String(v) => Ok(v),
+            _ => Err(JsonFormatError::InvalidString),
         }
     }
 
-    pub fn number(&self) -> Result<f64> {
+    pub fn float(&self) -> Result<f64> {
         match self {
-            JsonValue::Number(value) => Ok(*value),
-            _ => Err(JsonFormatError::InvalidNumber)
+            JsonValue::Float(v) => Ok(*v),
+            _ => Err(JsonFormatError::InvalidFloat),
+        }
+    }
+
+    pub fn long(&self) -> Result<i64> {
+        match self {
+            JsonValue::Long(v) => Ok(*v),
+            JsonValue::UnsignedLong(v) => Ok(*v as i64),
+            _ => Err(JsonFormatError::InvalidInt),
+        }
+    }
+
+    pub fn unsigned_long(&self) -> Result<u64> {
+        match self {
+            JsonValue::UnsignedLong(v) => Ok(*v),
+            JsonValue::Long(v) => Ok(*v as u64),
+            _ => Err(JsonFormatError::InvalidInt),
+        }
+    }
+
+    pub fn int(&self) -> Result<i32> {
+        match self {
+            JsonValue::Int(v) => Ok(*v),
+            JsonValue::UnsignedInt(v) => Ok(*v as i32),
+            _ => Err(JsonFormatError::InvalidInt),
+        }
+    }
+
+    pub fn unsigned_int(&self) -> Result<u32> {
+        match self {
+            JsonValue::UnsignedInt(v) => Ok(*v),
+            JsonValue::Int(v) => Ok(*v as u32),
+            _ => Err(JsonFormatError::InvalidUnsingedInt),
         }
     }
 
     pub fn bool(&self) -> Result<bool> {
         match self {
             JsonValue::Bool(value) => Ok(*value),
-            _ => Err(JsonFormatError::InvalidBool)
+            _ => Err(JsonFormatError::InvalidBool),
         }
+    }
+
+    fn parse_number(s: &str) -> Result<JsonValue> {
+
+        if let Ok(v) = s.parse::<i32>() {
+            return Ok(JsonValue::Int(v));
+        }
+
+        if let Ok(v) = s.parse::<u32>() {
+            return Ok(JsonValue::UnsignedInt(v));
+        }
+
+        if let Ok(v) = s.parse::<i64>() {
+            return Ok(JsonValue::Long(v));
+        }
+
+        if let Ok(v) = s.parse::<u64>() {
+            return Ok(JsonValue::UnsignedLong(v));
+        }
+
+        if let Ok(v) = s.parse::<f64>() {
+            if v.is_finite() {
+                return Ok(JsonValue::Float(v));
+            }
+        }
+
+        Err(JsonFormatError::InvalidNumber)
     }
 }
 
@@ -65,6 +130,9 @@ pub enum JsonFormatError {
     InvalidArray,
     InvalidString,
     InvalidNumber,
+    InvalidFloat,
+    InvalidInt,
+    InvalidUnsingedInt,
     InvalidBool,
     InvalidNull,
 }
@@ -74,12 +142,15 @@ impl std::fmt::Display for JsonFormatError {
         let output_str: &str = match self {
             JsonFormatError::MissingKey(msg) => msg,
             JsonFormatError::ParsingIssue(msg) => msg,
-            JsonFormatError::InvalidObject => "Value is not a valid json object",
-            JsonFormatError::InvalidArray => "Value is not a valid json array",
-            JsonFormatError::InvalidString => "Value is not a valid json string",
-            JsonFormatError::InvalidNumber => "Value is not a valid json number",
-            JsonFormatError::InvalidBool => "Value is not a valid json boolean",
-            JsonFormatError::InvalidNull => "Value is not a valid json null value",
+            JsonFormatError::InvalidObject => "Value is not a valid  object",
+            JsonFormatError::InvalidArray => "Value is not a valid  array",
+            JsonFormatError::InvalidString => "Value is not a valid  string",
+            JsonFormatError::InvalidFloat => "Value is not a valid  float",
+            JsonFormatError::InvalidInt => "Value is not a valid  singed integer",
+            JsonFormatError::InvalidUnsingedInt => "Value is not a valid unsinged integer",
+            JsonFormatError::InvalidBool => "Value is not a valid  boolean",
+            JsonFormatError::InvalidNull => "Value is not a valid  null value",
+            JsonFormatError::InvalidNumber => "Value is not a valid number",
         };
         f.write_str(output_str)
     }
@@ -105,24 +176,27 @@ impl std::fmt::Display for JsonParseError {
 }
 
 pub fn decode_json_str(input: &str) -> Result<JsonValue> {
-    let tokens = lexer::tokenize_str(input)
-                                    .map_err(|err| JsonFormatError::ParsingIssue(err))?;
+    let tokens = lexer::tokenize_str(input).map_err(|err| JsonFormatError::ParsingIssue(err))?;
 
     let mut parser = internal::JsonParser::with_defaults(tokens);
 
-    return parser.parse(0)
-                 .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
+    return parser
+        .parse(0)
+        .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
 }
 
-pub fn decode_file<P>(file_path: P) -> Result<JsonValue> 
-where P: AsRef<std::path::Path> {
-    let tokens = lexer::tokenize_path(file_path)
-                                    .map_err(|err| JsonFormatError::ParsingIssue(err))?;
-    
+pub fn decode_file<P>(file_path: P) -> Result<JsonValue>
+where
+    P: AsRef<std::path::Path>,
+{
+    let tokens =
+        lexer::tokenize_path(file_path).map_err(|err| JsonFormatError::ParsingIssue(err))?;
+
     let mut parser = internal::JsonParser::with_defaults(tokens);
 
-    return parser.parse(0)
-                 .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
+    return parser
+        .parse(0)
+        .map_err(|err| JsonFormatError::ParsingIssue(err.msg));
 }
 
 pub fn encode<T>(item: &T) -> JsonValue
@@ -213,7 +287,9 @@ mod internal {
                     )));
                 }
 
-                let key = key_token.string().expect("key_token is a valid string when entering this branch");
+                let key = key_token
+                    .string()
+                    .expect("key_token is a valid string when entering this branch");
 
                 if !matches!(self.tokens.peek(), Some(JsonToken::Colon)) {
                     return Err(JsonParseError::new(&format!(
@@ -233,7 +309,7 @@ mod internal {
                         continue;
                     }
                     Some(JsonToken::Bracket(Bracket::CurlyClosed)) => {
-                        self.tokens.next();//consume the closing brace;
+                        self.tokens.next(); //consume the closing brace;
                         return Ok(JsonValue::Object(json_object));
                     }
                     Some(token) => {
@@ -298,7 +374,7 @@ mod internal {
             self.tokens
                 .next()
                 .filter(|t| matches!(*t, JsonToken::Number(_)))
-                .map(|t| JsonValue::Number(t.number()))
+                .map(|t| JsonValue::parse_number(&t.number()).unwrap())
                 .ok_or(JsonParseError::new("Expected a valid number token"))
         }
 
