@@ -9,9 +9,9 @@ fn main() -> djson::Result<()>  {
     let result = djson::decode_json_str(input).unwrap();
     djson::pp_print_stdout(&result);
     
-    let age = result.get("age").unwrap().unsigned_int()?;
-    let name = result.get("name").unwrap().string()?;
-    let emotion = result.get("emotion").unwrap().string()?;
+    let age = result["age"].unsigned_int()?;
+    let name = result["name"].string()?;
+    let emotion = result["emotion"].string()?;
 
     println!("age={}, name={}, emotion={}", age, name, emotion);
     println!();
@@ -20,12 +20,12 @@ fn main() -> djson::Result<()>  {
 
     let file_result = djson::decode_file(EXAMPLE_PATH).unwrap();
 
-    let people = file_result.get("people").unwrap().array()?;
+    let people = file_result["people"].array()?;
 
     for person in people {
-        let age = person.get("age").unwrap().unsigned_int()?;
-        let name = person.get("name").unwrap().string()?;
-        let emotion = person.get("emotion").unwrap().string()?;
+        let age = person["age"].unsigned_int()?;
+        let name = person["name"].string()?;
+        let emotion = person["emotion"].string()?;
 
         println!("age={}, name={}, emotion={}", age, name, emotion);
     }

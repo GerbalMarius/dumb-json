@@ -278,6 +278,23 @@ impl fmt::Display for JsonValue {
     }
 }
 
+impl std::ops::Index<&str> for JsonValue {
+    type Output = JsonValue;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        self.get(index).unwrap()
+    }
+}
+
+impl std::ops::Index<usize> for JsonValue {
+    type Output = JsonValue;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.array().unwrap()[index]
+    }
+}
+
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JsonFormatError {
     MissingKey(String),
