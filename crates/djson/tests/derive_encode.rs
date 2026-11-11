@@ -7,7 +7,15 @@ struct Person {
 }
 
 #[derive(Encode)]
+struct Value<T> where T: Encode {
+    val: T
+}
+
+#[derive(Encode)]
 struct Point(f32, f32);
+
+#[derive(Encode)]
+struct Maybe<T: Encode>(T);
 
 #[derive(Encode)]
 struct Marker;
@@ -53,12 +61,39 @@ fn encode_positional_struct_produces_valid_json() {
 }
 
 #[test]
-fn encode_uninit_struct_produces_valid_json() {
+fn encode_unit_struct_produces_valid_json() {
     let marker = Marker;
 
     let marker_json = marker.encode();
     match marker_json {
         JsonValue::Object(obj) => assert!(obj.is_empty()),
         _ => panic!("Expected empty valid json object"),
+    }
+}
+
+
+#[test]
+fn encode_generic_named_struct_produces_valid_json() {
+    let value = Value {val: 0};
+
+    let value_json = value.encode();
+    match value_json {
+        JsonValue::Object(obj) => {
+            assert_eq!(obj.get("val"), Some(&JsonValue::Int(value.val)))
+        }
+        _ => panic!("Expected valid json object")
+    }
+}
+
+#[test]
+fn encode_generic_positional_struct_produces_valid_json() {
+    let value = Maybe(0);
+
+    let value_json = value.encode();
+    match value_json {
+        JsonValue::Object(obj) => {
+            assert_eq!(obj.get("0"), Some(&JsonValue::Int(value.0)))
+        }
+        _ => panic!("Expected valid json object")
     }
 }

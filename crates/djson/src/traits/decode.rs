@@ -1,20 +1,20 @@
 use crate::{JsonFormatError, JsonValue};
 
-pub trait Decode<T> {
-    fn decode(json: JsonValue) -> crate::djson::Result<T>;
+pub trait Decode: Sized {
+    fn decode(json: JsonValue) -> crate::djson::Result<Self>;
 }
 
-impl<T: Copy + Decode<T>> Decode<Option<T>> for Option<T> {
-    fn decode(json: JsonValue) -> crate::djson::Result<Option<T>> {
+impl<T: Copy + Decode> Decode for Option<T> {
+    fn decode(json: JsonValue) -> crate::djson::Result<Self> {
         match json {
             JsonValue::Nil => Ok(None),
-            _ => Ok(Some(T::decode(json)?))
+            other => Ok(T::decode(other).ok())
         }
     }
 }
 
-impl<T: Decode<T>> Decode<Vec<T>> for Vec<T> {
-    fn decode(json: JsonValue) -> crate::djson::Result<Vec<T>> {
+impl<T: Decode> Decode for Vec<T> {
+    fn decode(json: JsonValue) -> crate::djson::Result<Self> {
         let values = match json {
             JsonValue::Array(values) => values,
             _ => return Err(JsonFormatError::InvalidArray),
@@ -26,56 +26,50 @@ impl<T: Decode<T>> Decode<Vec<T>> for Vec<T> {
     }
 }
 
-impl<T: Decode<T>> Decode<Vec<T>> for [&T] {
-    fn decode(json: JsonValue) -> crate::djson::Result<Vec<T>> {
-        let values = match json {
-            JsonValue::Array(values) => values,
-            _ => return Err(JsonFormatError::InvalidArray),
-        };
-
-        values.into_iter()
-            .map(T::decode)
-            .collect()
-    }
-}
-
-impl Decode<u32> for u32 {
+impl Decode for u32 {
     fn decode(json: JsonValue) -> crate::djson::Result<u32> {
         json.unsigned_int()
     }
 }
 
-impl Decode<u64> for u64 {
+impl Decode for u64 {
     fn decode(json: JsonValue) -> crate::djson::Result<u64> {
         json.unsigned_long()
     }
 }
 
-impl Decode<i32> for i32 {
+impl Decode for i32 {
     fn decode(json: JsonValue) -> crate::djson::Result<i32> {
         json.int()
     }
 }
 
-impl Decode<i64> for i64 {
+impl Decode for i64 {
     fn decode(json: JsonValue) -> crate::djson::Result<i64> {
         json.long()
     }
 }
 
-impl Decode<String> for String {
+
+impl Decode for f32 {
+    fn decode(json: JsonValue) -> crate::djson::Result<f32> {
+        json.float()
+    }
+}
+
+impl Decode for f64 {
+    fn decode(json: JsonValue) -> crate::djson::Result<f64> {
+        json.double()
+    }
+}
+
+impl Decode for String {
     fn decode(json: JsonValue) -> crate::djson::Result<String> {
         json.string().map(String::from)
     }
 }
 
-impl Decode<String> for &str {
-    fn decode(json: JsonValue) -> crate::djson::Result<String> {
-        json.string().map(String::from)
-    }
-}
-
-impl Decode<bool> for bool {
+impl Decode for bool {
     fn decode(json: JsonValue) -> crate::djson::Result<bool> {
         json.bool()
     }

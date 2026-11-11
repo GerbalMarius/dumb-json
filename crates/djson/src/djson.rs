@@ -49,7 +49,14 @@ impl JsonValue {
         }
     }
 
-    pub fn float(&self) -> Result<f64> {
+    pub fn float(&self) -> Result<f32> {
+        match self {
+            JsonValue::Float(v) => Ok(*v),
+            _ => Err(JsonFormatError::InvalidFloat),
+        }
+    }
+
+    pub fn double(&self) -> Result<f64> {
         match self {
             JsonValue::Double(v) => Ok(*v),
             _ => Err(JsonFormatError::InvalidFloat),
@@ -275,6 +282,7 @@ impl fmt::Display for JsonValue {
 pub enum JsonFormatError {
     MissingKey(String),
     ParsingIssue(String),
+    MissingField,
     InvalidObject,
     InvalidArray,
     InvalidString,
@@ -300,6 +308,7 @@ impl fmt::Display for JsonFormatError {
             JsonFormatError::InvalidBool => "Value is not a valid  boolean",
             JsonFormatError::InvalidNull => "Value is not a valid  null value",
             JsonFormatError::InvalidNumber => "Value is not a valid number",
+            JsonFormatError::MissingField => "Value is missing a required field",
         };
         f.write_str(output_str)
     }
@@ -361,7 +370,7 @@ pub fn pp_print_stdout(json: &JsonValue) {
 
 pub fn decode<T>(json_str: &str) -> Result<T>
 where
-    T: Decode<T>,
+    T: Decode,
 {
     let result = decode_json_str(json_str).map_err(|_| JsonFormatError::InvalidObject)?;
 
