@@ -10,12 +10,9 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     let fields = match &input.data {
         syn::Data::Struct(data) => &data.fields,
         _ => {
-            return syn::Error::new_spanned(
-                name,
-                "Encode can only be derived for structs",
-            )
-            .to_compile_error()
-            .into();
+            return syn::Error::new_spanned(name, "Encode can only be derived for structs")
+                .to_compile_error()
+                .into();
         }
     };
 
@@ -33,15 +30,9 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     }
 
     let expanded = match fields {
-        Fields::Named(fields_named) => {
-            encode_named_fields(name, fields_named, &generics)
-        }
-        Fields::Unnamed(fields_unnamed) => {
-            encode_unnamed_fields(name, fields_unnamed, &generics)
-        }
-        Fields::Unit => {
-            encode_unit_struct(name, &generics)
-        }
+        Fields::Named(fields_named) => encode_named_fields(name, fields_named, &generics),
+        Fields::Unnamed(fields_unnamed) => encode_unnamed_fields(name, fields_unnamed, &generics),
+        Fields::Unit => encode_unit_struct(name, &generics),
     };
 
     TokenStream::from(expanded)
@@ -80,11 +71,12 @@ fn encode_named_fields(
     fields_named: &syn::FieldsNamed,
     generics: &Generics,
 ) -> TokenStream {
-    let field_names = fields_named.named.iter()
-                                                        .map(|field| field.ident.as_ref().unwrap());
+    let field_names = fields_named
+        .named
+        .iter()
+        .map(|field| field.ident.as_ref().unwrap());
 
-    let (impl_generics, ty_generics, where_clause) =
-        generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         impl #impl_generics ::djson::Encode
@@ -112,39 +104,32 @@ fn encode_unnamed_fields(
     fields_unnamed: &FieldsUnnamed,
     generics: &Generics,
 ) -> TokenStream {
-    let indexes = (0..fields_unnamed.unnamed.len())
-        .map(syn::Index::from);
+    let indexes = (0..fields_unnamed.unnamed.len()).map(syn::Index::from);
 
-    let (impl_generics, ty_generics, where_clause) =
-        generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         impl #impl_generics ::djson::Encode
             for #name #ty_generics #where_clause
         {
             fn encode(&self) -> ::djson::JsonValue {
-                let mut object = ::std::collections::HashMap::new();
+                let mut list = Vec::new();
 
                 #(
-                    object.insert(
-                        stringify!(#indexes).to_string(),
+                    list.push(
                         ::djson::Encode::encode(&self.#indexes),
                     );
                 )*
 
-                ::djson::JsonValue::Object(object)
+                ::djson::JsonValue::Array(list)
             }
         }
     }
     .into()
 }
 
-fn encode_unit_struct(
-    name: &Ident,
-    generics: &Generics,
-) -> TokenStream {
-    let (impl_generics, ty_generics, where_clause) =
-        generics.split_for_impl();
+fn encode_unit_struct(name: &Ident, generics: &Generics) -> TokenStream {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         impl #impl_generics ::djson::Encode
@@ -229,23 +214,23 @@ fn decode_unnamed_fields(
             fn decode(
                 json: ::djson::JsonValue
             ) -> ::djson::Result<Self> {
-                let values = match json {
-                    ::djson::JsonValue::Array(values) => values,
+                let mut values = match json {
+                    ::djson::JsonValue::Array(values) => values.into_iter(),
                     _ => return Err(::djson::JsonFormatError::InvalidArray),
                 };
 
-                let mut values = values.iter();
+                let result = Self(
+                    #(#field_decoders),*
+                );
+
                 if values.next().is_some() {
-                        return Err(::djson::JsonFormatError::InvalidArray);
+                    return Err(::djson::JsonFormatError::InvalidArray);
                 }
 
-                Ok(Self(
-                    #(#field_decoders),*
-                ))
+                Ok(result)
             }
         }
-    }
-    .into()
+    }.into()
 }
 
 fn decode_unit_struct(name: &Ident, generics: &syn::Generics) -> TokenStream {

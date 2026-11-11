@@ -48,15 +48,11 @@ fn encode_positional_struct_produces_valid_json() {
 
     let point_json = point.encode();
      match point_json {
-        JsonValue::Object(obj) => {
-            assert_eq!(
-                obj.get("0"),
-                Some(&JsonValue::Float(point.0))
-            );
-
-            assert_eq!(obj.get("1"), Some(&JsonValue::Float(point.1)));
+        JsonValue::Array(arr) => {
+            assert_eq!(arr[0], JsonValue::Float(point.0));
+            assert_eq!(arr[1], JsonValue::Float(point.1));
         }
-        _ => panic!("Expected valid json object "),
+        _ => panic!("Expected valid json array "),
     };
 }
 
@@ -91,8 +87,8 @@ fn encode_generic_positional_struct_produces_valid_json() {
 
     let value_json = value.encode();
     match value_json {
-        JsonValue::Object(obj) => {
-            assert_eq!(obj.get("0"), Some(&JsonValue::Int(value.0)))
+        JsonValue::Array(array) => {
+            assert_eq!(array[0], JsonValue::Int(value.0))
         }
         _ => panic!("Expected valid json object")
     }
