@@ -2,9 +2,7 @@ mod djson;
 pub mod lexer;
 pub mod traits;
 
+pub use traits::encode::Encode;
 pub use djson::*;
 
-#[cfg(test)]
-mod tests {
-
-}
+pub use djson_derive::Encode;

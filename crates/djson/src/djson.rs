@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use crate::{
     lexer::lexer,
@@ -7,15 +7,16 @@ use crate::{
 
 //can use btree instead of hashmap for lower memory consumption as well,
 //but the faster search is more useful imo
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum JsonValue {
     Object(HashMap<String, JsonValue>),
     Array(Vec<JsonValue>),
     String(String),
-    Float(f64),
+    Double(f64),
     Long(i64),
     UnsignedLong(u64),
     Int(i32),
+    Float(f32),
     UnsignedInt(u32),
     Bool(bool),
     Nil,
@@ -50,7 +51,7 @@ impl JsonValue {
 
     pub fn float(&self) -> Result<f64> {
         match self {
-            JsonValue::Float(v) => Ok(*v),
+            JsonValue::Double(v) => Ok(*v),
             _ => Err(JsonFormatError::InvalidFloat),
         }
     }
@@ -94,8 +95,16 @@ impl JsonValue {
         }
     }
 
-    fn parse_number(s: &str) -> Result<JsonValue> {
+    pub fn pretty_print_str(&self) -> String {
+         let mut buff = String::new();
+         
+         Self::write_json(self, &mut buff, 0, Some(2))
+            .expect("Buy more RAM lol");
 
+        return buff;
+    }
+
+    fn parse_number(s: &str) -> Result<JsonValue> {
         if let Ok(v) = s.parse::<i32>() {
             return Ok(JsonValue::Int(v));
         }
@@ -114,11 +123,151 @@ impl JsonValue {
 
         if let Ok(v) = s.parse::<f64>() {
             if v.is_finite() {
-                return Ok(JsonValue::Float(v));
+                return Ok(JsonValue::Double(v));
             }
         }
 
         Err(JsonFormatError::InvalidNumber)
+    }
+
+    fn write_json(
+        value: &JsonValue,
+        f: &mut dyn  fmt::Write,
+        depth: u32,
+        indent: Option<u32>,
+    ) -> fmt::Result {
+        match value {
+            JsonValue::String(s) => Self::write_json_string(s, f),
+            JsonValue::Object(obj) => Self::write_object(obj, f, depth, indent),
+            JsonValue::Array(values) => Self::write_array(values, f, depth, indent),
+            JsonValue::Double(value) => Self::write_double(*value, f),
+            JsonValue::Float(value) => Self::write_float(*value, f),
+            JsonValue::Long(long) => write!(f, "{long}"),
+            JsonValue::UnsignedLong(ulong) => write!(f, "{ulong}"),
+            JsonValue::Int(int) => write!(f, "{int}"),
+            JsonValue::UnsignedInt(uint) => write!(f, "{uint}"),
+            JsonValue::Bool(bool) => write!(f, "{bool}"),
+            JsonValue::Nil => f.write_str("null"),
+        }
+    }
+
+    fn write_indent(f: &mut dyn  fmt::Write, spaces: u32) -> fmt::Result {
+        for _ in 0..spaces {
+            f.write_char(' ')?;
+        }
+
+        Ok(())
+    }
+
+    fn write_json_string(value: &str, f: &mut dyn  fmt::Write) -> fmt::Result {
+        f.write_char('"')?;
+
+        for ch in value.chars() {
+            match ch {
+                '"' => f.write_str("\\\"")?,
+                '\\' => f.write_str("\\\\")?,
+                '\n' => f.write_str("\\n")?,
+                '\r' => f.write_str("\\r")?,
+                '\t' => f.write_str("\\t")?,
+                '\u{08}' => f.write_str("\\b")?,
+                '\u{0C}' => f.write_str("\\f")?,
+                ch if ch.is_control() => {
+                    write!(f, "\\u{:04x}", ch as u32)?;
+                }
+                ch => f.write_char(ch)?,
+            }
+        }
+
+        f.write_char('"')
+    }
+
+    fn write_double(value: f64, f: &mut dyn  fmt::Write) -> fmt::Result {
+        if !value.is_finite() {
+            return Err(fmt::Error);
+        }
+        return write!(f, "{value}");
+    }
+
+    fn write_float(value: f32, f: &mut dyn  fmt::Write) -> fmt::Result {
+        if !value.is_finite() {
+            return Err(fmt::Error);
+        }
+        return write!(f, "{value}");
+    }
+
+    fn write_array(
+        values: &[JsonValue],
+        f: &mut dyn  fmt::Write,
+        depth: u32,
+        indent: Option<u32>,
+    ) -> fmt::Result {
+        f.write_char('[')?;
+
+        for (idx, value) in values.iter().enumerate() {
+            if idx > 0 {
+                f.write_char(',')?;
+            }
+
+            if let Some(spaces) = indent {
+                f.write_char('\n')?;
+                Self::write_indent(f, (depth + 1) * spaces)?;
+            }
+
+            Self::write_json(value, f, depth + 1, indent)?;
+        }
+
+        if !values.is_empty() {
+            if let Some(spaces) = indent {
+                f.write_char('\n')?;
+                Self::write_indent(f, depth * spaces)?;
+            }
+        }
+        return f.write_char(']');
+    }
+
+    fn write_object(
+        obj: &HashMap<String, JsonValue>,
+        f: &mut dyn  fmt::Write,
+        depth: u32,
+        indent: Option<u32>,
+    ) -> fmt::Result {
+
+        f.write_char('{')?;
+
+        for (i, (key, value)) in obj.iter().enumerate() {
+                if i > 0 {
+                    f.write_char(',')?;
+                }
+
+                if let Some(spaces) = indent {
+                    f.write_char('\n')?;
+                    Self::write_indent(f, (depth + 1) * spaces)?;
+                }
+
+                Self::write_json_string(key, f)?;
+                f.write_char(':')?;
+
+                if indent.is_some() {
+                    f.write_char(' ')?;
+                }
+
+                Self::write_json(value, f, depth + 1, indent)?;
+            }
+
+            if !obj.is_empty() {
+                if let Some(spaces) = indent {
+                    f.write_char('\n')?;
+                    Self::write_indent(f, depth * spaces)?;
+                }
+            }
+
+            return f.write_char('}');
+    }
+}
+
+impl fmt::Display for JsonValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Self::write_json(&self, f, 0, None)
     }
 }
 
@@ -137,8 +286,8 @@ pub enum JsonFormatError {
     InvalidNull,
 }
 
-impl std::fmt::Display for JsonFormatError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for JsonFormatError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let output_str: &str = match self {
             JsonFormatError::MissingKey(msg) => msg,
             JsonFormatError::ParsingIssue(msg) => msg,
@@ -169,8 +318,8 @@ impl JsonParseError {
     }
 }
 
-impl std::fmt::Display for JsonParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for JsonParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{}", self.msg)
     }
 }
@@ -203,7 +352,11 @@ pub fn encode<T>(item: &T) -> JsonValue
 where
     T: Encode,
 {
-    item.djson_encode()
+    item.encode()
+}
+
+pub fn pp_print_stdout(json: &JsonValue) {
+    println!("{}", json.pretty_print_str());
 }
 
 pub fn decode<T>(json_str: &str) -> Result<T>
@@ -212,7 +365,7 @@ where
 {
     let result = decode_json_str(json_str).map_err(|_| JsonFormatError::InvalidObject)?;
 
-    return T::decode(result);
+    return T::djson_decode(result);
 }
 
 mod internal {
