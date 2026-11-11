@@ -26,6 +26,13 @@ pub fn derive_encode(input: TokenStream) -> TokenStream {
     return TokenStream::from(expanded);
 }
 
+#[allow(unused)]
+#[proc_macro_derive(Decode)]
+pub fn derive_decode(input: TokenStream) -> TokenStream {
+    
+    return TokenStream::new();
+}
+
 fn encode_named_fields(name: &syn::Ident, fields_named: &syn::FieldsNamed) -> TokenStream {
     let field_names = fields_named
         .named

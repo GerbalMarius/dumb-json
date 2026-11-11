@@ -365,7 +365,7 @@ where
 {
     let result = decode_json_str(json_str).map_err(|_| JsonFormatError::InvalidObject)?;
 
-    return T::djson_decode(result);
+    return T::decode(result);
 }
 
 mod internal {
