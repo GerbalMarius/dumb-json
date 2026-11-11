@@ -385,13 +385,18 @@ pub fn pp_print_stdout(json: &JsonValue) {
     println!("{}", json.pretty_print_str());
 }
 
-pub fn decode<T>(json_str: &str) -> Result<T>
+pub fn decode_str<T>(json_str: &str) -> Result<T>
 where
     T: Decode,
 {
     let result = decode_json_str(json_str).map_err(|_| JsonFormatError::InvalidObject)?;
 
-    return T::decode(result);
+    return T::decode(&result);
+}
+
+pub fn decode_json<T>(json: &JsonValue) -> Result<T>
+where T: Decode {
+    return T::decode(json);
 }
 
 mod internal {

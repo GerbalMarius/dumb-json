@@ -37,7 +37,7 @@ fn decode_named_struct_produces_valid_instance() {
         (String::from("age"), JsonValue::UnsignedInt(age)),
     ]));
 
-    let person = Person::decode(json);
+    let person = Person::decode(&json);
 
     assert!(person.is_ok());
 
@@ -52,7 +52,7 @@ fn decode_positional_struct_produces_valid_instance() {
         vec![JsonValue::Float(0.), JsonValue::Float(0.)]
     );
 
-    let res = Point::decode(json);
+    let res = Point::decode(&json);
     assert!(res.is_ok());
 
     let point = res.unwrap();
@@ -66,7 +66,7 @@ fn decode_generic_named_struct_produces_valid_struct_result() {
         (String::from("val"), JsonValue::UnsignedInt(10)),
     ]));
      
-    let value =  Value::<i32>::decode(json);
+    let value =  Value::<i32>::decode(&json);
 
     assert!(value.is_ok());
 
@@ -80,7 +80,7 @@ fn decode_generic_positional_struct_produces_valid_struct_result() {
         vec![JsonValue::String("Marius".to_string())]
     );
 
-    let res = Maybe::<String>::decode(json);
+    let res = Maybe::<String>::decode(&json);
     assert!(res.is_ok());
 
     let p_value = res.unwrap();
@@ -91,6 +91,6 @@ fn decode_generic_positional_struct_produces_valid_struct_result() {
 fn decode_unit_struct_produces_valid_struct_result() {
     let json = JsonValue::Object(HashMap::new());
 
-    let res = Marker::decode(json); //is valid for empty objects
+    let res = Marker::decode(&json); //is valid for empty objects
     assert!(res.is_ok());
 }

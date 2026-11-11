@@ -158,7 +158,7 @@ fn decode_named_fields(
         quote! {
             #field_name: {
                 let value = object
-                    .remove(#key)
+                    .get(#key)
                     .ok_or(::djson::JsonFormatError::MissingField)?;
 
                 <#field_type as ::djson::Decode>::decode(value)?
@@ -173,9 +173,9 @@ fn decode_named_fields(
             for #name #ty_generics #where_clause
         {
             fn decode(
-                json: ::djson::JsonValue
+                json: &::djson::JsonValue
             ) -> ::djson::Result<Self> {
-                let mut object = match json {
+                let object = match json {
                     ::djson::JsonValue::Object(object) => object,
                     _ => return Err(::djson::JsonFormatError::InvalidObject),
                 };
@@ -212,7 +212,7 @@ fn decode_unnamed_fields(
             for #name #ty_generics #where_clause
         {
             fn decode(
-                json: ::djson::JsonValue
+                json: &::djson::JsonValue
             ) -> ::djson::Result<Self> {
                 let mut values = match json {
                     ::djson::JsonValue::Array(values) => values.into_iter(),
@@ -241,7 +241,7 @@ fn decode_unit_struct(name: &Ident, generics: &syn::Generics) -> TokenStream {
             for #name #ty_generics #where_clause
         {
             fn decode(
-                json: ::djson::JsonValue
+                json: &::djson::JsonValue
             ) -> ::djson::Result<Self> {
                 match json {
                     ::djson::JsonValue::Object(_) => Ok(Self),
