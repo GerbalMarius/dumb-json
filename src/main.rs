@@ -25,9 +25,8 @@ fn main() -> djson::Result<()>  {
     println!("Reading from a file: ");
 
     let file_result = djson::decode_file(EXAMPLE_PATH).unwrap();
-    let r = &file_result["people"];
 
-    let people = djson::decode_json::<Vec<Person>>(&r)?;
+    let people = djson::decode_json::<Vec<Person>>(&file_result["people"])?;
 
     for p in &people {
         println!("age={}, name={}, emotion={}", p.age, p.name, p.emotion);
