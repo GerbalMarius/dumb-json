@@ -16,7 +16,7 @@ use crate::{
 compile_error!("Features ordered, unordered, and sorted are mutually exclusive");
 
 
-#[cfg(feature = "default")]
+#[cfg(feature = "ordered")]
 pub type Map<K, V> = indexmap::IndexMap<K, V>;
 
 #[cfg(feature = "sorted")]
