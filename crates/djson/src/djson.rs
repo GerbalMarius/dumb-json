@@ -16,7 +16,7 @@ use crate::{
 compile_error!("Features ordered, unordered, and sorted are mutually exclusive");
 
 
-#[cfg(feature = "ordered")]
+#[cfg(feature = "ordered")]//default
 pub type Map<K, V> = indexmap::IndexMap<K, V>;
 
 #[cfg(feature = "sorted")]
@@ -315,6 +315,76 @@ impl std::ops::Index<usize> for JsonValue {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.array().unwrap()[index]
+    }
+}
+
+impl Into<String> for JsonValue {
+    fn into(self) -> String {
+        self.string().unwrap().to_string()
+    }
+}
+
+
+
+impl Into<isize> for JsonValue {
+    fn into(self) -> isize {
+        match isize::BITS {
+            64 => self.long().unwrap() as isize,
+            32 => self.int().unwrap() as isize,
+            _ => unreachable!()
+        }
+    }
+}
+
+impl Into<i64> for JsonValue {
+    fn into(self) -> i64 {
+        self.long().unwrap()
+    }
+}
+
+impl Into<i32> for JsonValue {
+    fn into(self) -> i32 {
+        self.int().unwrap()
+    }
+}
+
+impl Into<usize> for JsonValue {
+    fn into(self) -> usize {
+        match usize::BITS {
+            64 => self.unsigned_long().unwrap() as usize,
+            32 => self.unsigned_int().unwrap() as usize,
+            _ => unreachable!()
+        }
+    }
+}
+
+impl Into<u64> for JsonValue {
+    fn into(self) -> u64 {
+        self.unsigned_long().unwrap()
+    }
+}
+
+impl Into<u32> for JsonValue {
+    fn into(self) -> u32 {
+        self.unsigned_int().unwrap()
+    }
+}
+
+impl Into<bool> for JsonValue {
+    fn into(self) -> bool {
+        self.bool().unwrap()
+    }
+}
+
+impl Into<f64> for JsonValue {
+    fn into(self) -> f64 {
+        self.double().unwrap()
+    }
+}
+
+impl Into<f32> for JsonValue {
+    fn into(self) -> f32 {
+        self.float().unwrap()
     }
 }
 
