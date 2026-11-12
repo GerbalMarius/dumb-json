@@ -1,15 +1,33 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    fmt,
+    io::{self, Write},
+};
 
 use crate::{
     lexer::lexer,
     traits::{decode::Decode, encode::Encode},
 };
 
-//can use btree instead of hashmap for lower memory consumption as well,
-//but the faster search is more useful imo
+#[cfg(any(
+    all(feature = "ordered", feature = "unordered"),
+    all(feature = "ordered", feature = "sorted"),
+    all(feature = "unordered", feature = "sorted"),
+))]
+compile_error!("Features ordered, unordered, and sorted are mutually exclusive");
+
+
+#[cfg(feature = "default")]
+pub type Map<K, V> = indexmap::IndexMap<K, V>;
+
+#[cfg(feature = "sorted")]
+pub type Map<K, V> = std::collections::BTreeMap<K, V>;
+
+#[cfg(feature = "unordered")]
+pub type Map<K, V> = std::collections::HashMap<K, V>;
+
 #[derive(Debug, PartialEq)]
 pub enum JsonValue {
-    Object(HashMap<String, JsonValue>),
+    Object(Map<String, JsonValue>),
     Array(Vec<JsonValue>),
     String(String),
     Double(f64),
@@ -103,12 +121,19 @@ impl JsonValue {
     }
 
     pub fn pretty_print_str(&self) -> String {
-         let mut buff = String::new();
-         
-         Self::write_json(self, &mut buff, 0, Some(2))
-            .expect("Buy more RAM lol");
+        let mut buff = String::new();
+
+        Self::write_json(self, &mut buff, 0, Some(2)).expect("Buy more RAM lol");
 
         return buff;
+    }
+
+    fn write_to<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        let mut adapter = internal::IOWriter { writer };
+
+        Self::write_json(self, &mut adapter, 0, Some(2))
+            .map_err(|_| io::Error::other("Failed to serialize json value"))?;
+        Ok(())
     }
 
     fn parse_number(s: &str) -> Result<JsonValue> {
@@ -139,7 +164,7 @@ impl JsonValue {
 
     fn write_json(
         value: &JsonValue,
-        f: &mut dyn  fmt::Write,
+        f: &mut dyn fmt::Write,
         depth: u32,
         indent: Option<u32>,
     ) -> fmt::Result {
@@ -158,7 +183,7 @@ impl JsonValue {
         }
     }
 
-    fn write_indent(f: &mut dyn  fmt::Write, spaces: u32) -> fmt::Result {
+    fn write_indent(f: &mut dyn fmt::Write, spaces: u32) -> fmt::Result {
         for _ in 0..spaces {
             f.write_char(' ')?;
         }
@@ -166,7 +191,7 @@ impl JsonValue {
         Ok(())
     }
 
-    fn write_json_string(value: &str, f: &mut dyn  fmt::Write) -> fmt::Result {
+    fn write_json_string(value: &str, f: &mut dyn fmt::Write) -> fmt::Result {
         f.write_char('"')?;
 
         for ch in value.chars() {
@@ -188,14 +213,14 @@ impl JsonValue {
         f.write_char('"')
     }
 
-    fn write_double(value: f64, f: &mut dyn  fmt::Write) -> fmt::Result {
+    fn write_double(value: f64, f: &mut dyn fmt::Write) -> fmt::Result {
         if !value.is_finite() {
             return Err(fmt::Error);
         }
         return write!(f, "{value}");
     }
 
-    fn write_float(value: f32, f: &mut dyn  fmt::Write) -> fmt::Result {
+    fn write_float(value: f32, f: &mut dyn fmt::Write) -> fmt::Result {
         if !value.is_finite() {
             return Err(fmt::Error);
         }
@@ -204,7 +229,7 @@ impl JsonValue {
 
     fn write_array(
         values: &[JsonValue],
-        f: &mut dyn  fmt::Write,
+        f: &mut dyn fmt::Write,
         depth: u32,
         indent: Option<u32>,
     ) -> fmt::Result {
@@ -233,42 +258,41 @@ impl JsonValue {
     }
 
     fn write_object(
-        obj: &HashMap<String, JsonValue>,
-        f: &mut dyn  fmt::Write,
+        obj: &Map<String, JsonValue>,
+        f: &mut dyn fmt::Write,
         depth: u32,
         indent: Option<u32>,
     ) -> fmt::Result {
-
         f.write_char('{')?;
 
         for (i, (key, value)) in obj.iter().enumerate() {
-                if i > 0 {
-                    f.write_char(',')?;
-                }
-
-                if let Some(spaces) = indent {
-                    f.write_char('\n')?;
-                    Self::write_indent(f, (depth + 1) * spaces)?;
-                }
-
-                Self::write_json_string(key, f)?;
-                f.write_char(':')?;
-
-                if indent.is_some() {
-                    f.write_char(' ')?;
-                }
-
-                Self::write_json(value, f, depth + 1, indent)?;
+            if i > 0 {
+                f.write_char(',')?;
             }
 
-            if !obj.is_empty() {
-                if let Some(spaces) = indent {
-                    f.write_char('\n')?;
-                    Self::write_indent(f, depth * spaces)?;
-                }
+            if let Some(spaces) = indent {
+                f.write_char('\n')?;
+                Self::write_indent(f, (depth + 1) * spaces)?;
             }
 
-            return f.write_char('}');
+            Self::write_json_string(key, f)?;
+            f.write_char(':')?;
+
+            if indent.is_some() {
+                f.write_char(' ')?;
+            }
+
+            Self::write_json(value, f, depth + 1, indent)?;
+        }
+
+        if !obj.is_empty() {
+            if let Some(spaces) = indent {
+                f.write_char('\n')?;
+                Self::write_indent(f, depth * spaces)?;
+            }
+        }
+
+        return f.write_char('}');
     }
 }
 
@@ -293,7 +317,6 @@ impl std::ops::Index<usize> for JsonValue {
         &self.array().unwrap()[index]
     }
 }
-
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum JsonFormatError {
@@ -381,8 +404,15 @@ where
     item.encode()
 }
 
-pub fn pp_print_stdout(json: &JsonValue) {
-    println!("{}", json.pretty_print_str());
+pub fn pp_print_stdout(json: &JsonValue) -> io::Result<()> {
+    let mut out_lock = io::stdout().lock();
+
+    JsonValue::write_to(&json, &mut out_lock)?;
+    out_lock.write_all(crate::NEW_LINE.as_bytes())
+}
+
+pub fn pp_print<W: io::Write>(json: &JsonValue, writer: &mut W) -> io::Result<()> {
+    JsonValue::write_to(&json, writer)
 }
 
 pub fn decode_str<T>(json_str: &str) -> Result<T>
@@ -395,16 +425,19 @@ where
 }
 
 pub fn decode_json<T>(json: &JsonValue) -> Result<T>
-where T: Decode {
+where
+    T: Decode,
+{
     return T::decode(json);
 }
 
 mod internal {
     use crate::{
-        djson::{JsonParseError, JsonValue},
+        djson::{JsonParseError, JsonValue, Map},
         lexer::{bracket::Bracket, json_token::JsonToken},
     };
-    use std::collections::HashMap;
+    use core::fmt;
+    use std::io;
 
     type JsonParserResult = Result<JsonValue, JsonParseError>;
 
@@ -456,10 +489,10 @@ mod internal {
 
             if let Some(JsonToken::Bracket(Bracket::CurlyClosed)) = self.tokens.peek() {
                 self.tokens.next();
-                return Ok(JsonValue::Object(HashMap::new()));
+                return Ok(JsonValue::Object(Map::new()));
             }
 
-            let mut json_object: HashMap<String, JsonValue> = HashMap::new();
+            let mut json_object: Map<String, JsonValue> = Map::new();
 
             loop {
                 let key_token = self.parse(current_depth + 1)?;
@@ -576,6 +609,16 @@ mod internal {
                 .filter(|t| *t == JsonToken::Nil)
                 .map(|_| JsonValue::Nil)
                 .ok_or(JsonParseError::new("Expected a valid null token"))
+        }
+    }
+
+    pub struct IOWriter<'a, W: io::Write> {
+        pub writer: &'a mut W,
+    }
+
+    impl<'a, W: io::Write> fmt::Write for IOWriter<'a, W> {
+        fn write_str(&mut self, s: &str) -> std::fmt::Result {
+            self.writer.write_all(s.as_bytes()).map_err(|_| fmt::Error)
         }
     }
 }

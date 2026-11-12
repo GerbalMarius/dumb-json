@@ -9,3 +9,11 @@ warnings = "deny"
 [dependencies]
 parameterized = "2.1.0"
 djson-derive = { path = "../djson-derive" }
+indexmap = { version = "2.11.4", optional = true }
+
+
+[features]
+default = ["ordered"]
+unordered = []
+ordered = ["dep:indexmap"]
+sorted = []

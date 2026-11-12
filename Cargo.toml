@@ -13,4 +13,10 @@ members = [
 resolver = "2"
 
 [dependencies]
-djson = { path = "crates/djson" }
+djson = { path = "crates/djson", default-features = false }
+
+[features]
+default = ["djson/ordered"]
+unordered = ["djson/unordered"]
+ordered = ["djson/ordered"]
+sorted = ["djson/sorted"]

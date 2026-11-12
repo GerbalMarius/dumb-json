@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use djson::{Decode, JsonValue};
+use djson::{Decode, JsonValue, Map};
 
 #[derive(Decode)]
 struct Person {
@@ -29,7 +27,7 @@ struct Marker;
 fn decode_named_struct_produces_valid_instance() {
     let name = "Marius";
     let age = 25;
-    let json = JsonValue::Object(HashMap::from_iter([
+    let json = JsonValue::Object(Map::from_iter([
         (
             String::from("name"),
             JsonValue::String(String::from(name)),
@@ -62,9 +60,9 @@ fn decode_positional_struct_produces_valid_instance() {
 
 #[test]
 fn decode_generic_named_struct_produces_valid_struct_result() {
-    let json = JsonValue::Object(HashMap::from_iter([
+    let json = JsonValue::Object([
         (String::from("val"), JsonValue::UnsignedInt(10)),
-    ]));
+    ].into_iter().collect());
      
     let value =  Value::<i32>::decode(&json);
 
@@ -89,7 +87,7 @@ fn decode_generic_positional_struct_produces_valid_struct_result() {
 
 #[test]
 fn decode_unit_struct_produces_valid_struct_result() {
-    let json = JsonValue::Object(HashMap::new());
+    let json = JsonValue::Object(Map::new());
 
     let res = Marker::decode(&json); //is valid for empty objects
     assert!(res.is_ok());

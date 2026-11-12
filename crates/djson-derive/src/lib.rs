@@ -83,7 +83,7 @@ fn encode_named_fields(
             for #name #ty_generics #where_clause
         {
             fn encode(&self) -> ::djson::JsonValue {
-                let mut object = ::std::collections::HashMap::new();
+                let mut object = ::djson::Map::new();
 
                 #(
                     object.insert(
@@ -137,7 +137,7 @@ fn encode_unit_struct(name: &Ident, generics: &Generics) -> TokenStream {
         {
             fn encode(&self) -> ::djson::JsonValue {
                 ::djson::JsonValue::Object(
-                    ::std::collections::HashMap::new()
+                    ::djson::Map::new()
                 )
             }
         }

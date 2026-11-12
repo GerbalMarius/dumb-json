@@ -13,7 +13,7 @@ struct Person {
 fn main() -> djson::Result<()>  {
     let input = "{\"age\": 0, \"name\": \"Marius\", \"emotion\":\"😊\"}";
     let result = djson::decode_json_str(input).unwrap();
-    djson::pp_print_stdout(&result);
+    djson::pp_print_stdout(&result).unwrap();
     
     let age = result["age"].unsigned_int()?;
     let name = result["name"].string()?;

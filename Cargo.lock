@@ -7,6 +7,7 @@ name = "djson"
 version = "1.0.0"
 dependencies = [
  "djson-derive",
+ "indexmap",
  "parameterized",
 ]
 
